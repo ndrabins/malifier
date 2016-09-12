@@ -17,7 +17,7 @@ def getFeatures(file):
     fileFeatureList = []
 
     #########################################################
-                        #Get Seg Count
+    # FEATURE SET  1 -- Get Seg Count -----------------------
     #########################################################
 
     #########################################################
@@ -29,7 +29,7 @@ def getFeatures(file):
     SegmentFile.close()
 
     #Prep the feature list for segment counts
-    for feature in len(SegmentDictionary):
+    for feature in range(len(SegmentDictionary)):
         fileFeatureList.append(0)
 
     #Get Seg counts
@@ -44,10 +44,10 @@ def getFeatures(file):
 
 
     #########################################################
-                        #Get Opcode Count
+    # FEATURE SET 2 -- Get N-gram Counts --------------------
     #########################################################
-    myDict = opcodeCount.op(file)
-    fileFeatureList.append(myDict)
+    #myDict = opcodeCount.op(file)
+    #fileFeatureList.append(myDict)
 
     #########################################################
 

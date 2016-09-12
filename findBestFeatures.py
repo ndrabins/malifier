@@ -7,7 +7,7 @@ import segmentCount
 #        The purpose of this file is to gather some information about       #
 #        the .asm files. We will gather (in a sense) features from the      #
 #        .asm files to find out which features are most prevalent from      #
-#        the set. Those which are most prevelant will be use true features  #
+#        the set. Those which are most prevalent will be use true features  #
 #        for the network later on.as                                        #
 #############################################################################
 #############################################################################
@@ -64,6 +64,7 @@ segmentData.close()
 #############################################################################
 #############################################################################
 #############################################################################
+
 
 for file in ASM_Files:                  #For each file
     myDict = opcodeCount.op(file)       #Gather the single opcode count
