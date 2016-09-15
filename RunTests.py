@@ -9,9 +9,9 @@ MALWARE_FILE_PATH = TRAIN_FILE_PATH + "train/"
 ASM_Files = glob.glob(MALWARE_FILE_PATH + "*.asm")
 CLASS_Files = TRAIN_FILE_PATH + "trainLabels.txt"
 
-INPUT_COUNT = 0
+INPUT_COUNT = 458
 HIDDEN_NODES = 2
-OUTPUT_COUNT= 9
+OUTPUT_COUNT= 1
 
 #create neural network
 MalwareNetwork = NeuralNetwork.NN(INPUT_COUNT, HIDDEN_NODES, OUTPUT_COUNT)
@@ -22,7 +22,7 @@ classDictionary = classDict.getMalClasses(CLASS_Files)
 #Create Simple Train/Test partition
 part = int((len(ASM_Files)/3)*2) #Creates a partition at 2/3
 trainSet = ASM_Files[:part] #The first 2/3 are training
-testSet = ASM_Files[part:]  #Second 1/3 is testing
+testSet = ASM_Files[part:]#ASM_Files[part:]  #Second 1/3 is testing
 
 #Assemble features in train set
 #==================================
@@ -34,10 +34,9 @@ for file in trainSet:
     row = []
     featureList = getFeatures.getFeatures(file)
     row.append(featureList)
-
-    fileStub = file.split('/')[-1][:-4] #grab all but last chars in file name (removes .asm)
+    fileStub = file.split('\\')[-1][:-4] #grab all but last chars in file name (removes .asm)
     malwareClass = classDictionary[fileStub]
-    row.append([malwareClass])
+    row.append([int(malwareClass)])
 
     toTrain.append(row)
 
@@ -51,11 +50,10 @@ for file in testSet:
     featureList = getFeatures.getFeatures(file)
     row.append(featureList)
 
-    fileStub = file.split('/')[-1][:-4] #grab all but last chars in file name (removes .asm)
+    fileStub = file.split('\\')[-1][:-4] #grab all but last chars in file name (removes .asm)
     malwareClass = classDictionary[fileStub]
-    row.append([malwareClass])
+    row.append([int(malwareClass)])
 
     toTest.append(row)
-
 
 MalwareNetwork.test(toTest)
