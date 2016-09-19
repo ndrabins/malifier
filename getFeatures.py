@@ -37,7 +37,10 @@ def getFeatures(file):
 
     #Add Seg counts to feature list
     for segment in SEG_COUNTS:
-        fileFeatureList[SegmentDictionary[segment]] = SEG_COUNTS[segment]
+        if (segment in SEG_COUNTS and segment in SegmentDictionary):
+            fileFeatureList[SegmentDictionary[segment]] = SEG_COUNTS[segment]
+        elif (segment in SegmentDictionary and SegmentDictionary[segment] in fileFeatureList):
+            fileFeatureList[SegmentDictionary[segment]] = 0
     #########################################################
 
 
