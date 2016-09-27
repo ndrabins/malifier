@@ -1,21 +1,22 @@
 import numpy
 from scipy.misc import imsave
 
-
-
-def extract_picture_from_bytes(filename):
+def extract_picture_from_bytes(filename, num_bytes=0):
     f = open(filename)
 
-    #gets only the actual name of the
+    #gets only the actual name of the file
     filename_split = filename.split('/')
     filename = filename_split[-1][:-6] #strips out .bytes and gets only name
-
     file_text = f.readlines()
-    num_lines = len(file_text)
+
+    if num_bytes != 0:
+        #needs to be in increments of 16 because that is how many bytes are in a line
+        num_bytes_to_add = num_bytes % 16
+        num_lines = int(num_bytes+num_bytes_to_add/16)
+    else:
+        num_lines = len(file_text)
     pixel_values = []
-    #print(file_text[0:10])
-
-
+    
     for i in range(0,num_lines):
         byte_line = file_text[i][9:-1].split(" ") #take out address locations, not important info
 
@@ -28,12 +29,7 @@ def extract_picture_from_bytes(filename):
             pixel_line.append(int(byte, 16)) #convert hex values to decimal pixel values
         pixel_values += pixel_line #append each line to full list
 
-    '''
-    dt = numpy.dtype('b')
-    a = numpy.asarray(just_bytes[0:10])
-    g = numpy.uint8(a)
-    print(g)
-    '''
+
     length = len(pixel_values)#num pixels
     width = int(length ** .5) #picture dimension
     rem = length % width #remove excess pixels for an even image
@@ -45,4 +41,4 @@ def extract_picture_from_bytes(filename):
     f.close()
     print("done")
 
-#extract_picture_from_bytes('/media/ndrabins/My Passport/dataSample/0ACDbR5M3ZhBJajygTuf.bytes')
+#extract_picture_from_bytes('/media/ndrabins/My Passport/dataSample/0ACDbR5M3ZhBJajygTuf.bytes', 1000)
