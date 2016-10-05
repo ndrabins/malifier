@@ -1,7 +1,7 @@
 import glob
 from extract_header_image import extract_picture_from_bytes
 
-#this needs to be modified to whatever path you wanna use to store images.
+##this needs to be modified to whatever path you wanna use to store images.
 
 path = "/media/ndrabins/My Passport/dataSample/"
 

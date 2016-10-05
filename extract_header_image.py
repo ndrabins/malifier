@@ -46,4 +46,5 @@ def extract_picture_from_bytes(filename, write_path = "", num_bytes=0):
     f.close()
     print("done")
 
+#
 #extract_picture_from_bytes('/media/ndrabins/My Passport/dataSample/0NyfGXt8nmlK72Q9Irhs.bytes')
