@@ -13,8 +13,8 @@ import segmentCount
 #############################################################################
 
 
-MALWARE_FILE_PATH = "D:/train/train/"
-SAVE_FILE_PATH = "D:/train/"
+MALWARE_FILE_PATH = "/media/napster/data/train/train/"
+SAVE_FILE_PATH = "/media/napster/data/train/"
 ASM_Files = glob.glob(MALWARE_FILE_PATH + "*.asm")
 fileFeatureList = []
 
@@ -65,14 +65,32 @@ segmentData.close()
 #############################################################################
 #############################################################################
 
+#############################################################################
+#############################################################################
+# For this section I grabbed a list of all the 1grams in each file that occur
+# more than 200 times. I base this method off of the kaggle paper
+#############################################################################
+#############################################################################
+#matchedThresh = []
+#for file in ASM_Files:                  #For each file
+#    myDict = opcodeCount.op(file[:-4])       #Gather the single opcode count
 
-for file in ASM_Files:                  #For each file
-    myDict = opcodeCount.op(file)       #Gather the single opcode count
-    thresholdDict = {}
-    for key in myDict:
-        if myDict[key] >= 200:
-            thresholdDict[key] = myDict[key]
+#    for key in myDict:
+#        if (myDict[key] >= 200) and (not (key in matchedThresh)):
+#            matchedThresh.append(key)
 
-    file = open(SAVE_FILE_PATH+"opcode.txt", 'a')
-    file.write(str(thresholdDict))
-    file.close()
+#file = open(SAVE_FILE_PATH+"opcode.txt", 'a')
+#file.write(str(matchedThresh))
+#file.close()
+
+#############################################################################
+#############################################################################
+# Now I will be using my list, after preprocessing (in preprocessing.py) to
+# create a new list of ngrams.
+#############################################################################
+#############################################################################
+
+file = open("/media/napster/data/train/final_one_grams.txt", 'r')
+oneGrams = list(eval(file.readline()))
+file.close()
+opcodeCount.nGramsTwoThroughFour(ASM_Files, oneGrams)

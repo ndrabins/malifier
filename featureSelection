@@ -1,0 +1,165 @@
+import random
+import glob
+import classDict
+import math
+import FeedForwardNeuralNetwork as NN
+
+TRAIN_FILE_PATH = "/media/napster/data/train/"  # "F:/train/"
+MALWARE_FILE_PATH = TRAIN_FILE_PATH + "train/"
+
+ASM_Files = glob.glob(MALWARE_FILE_PATH + "*.asm")
+CLASS_Files = TRAIN_FILE_PATH + "trainLabels.txt"
+
+def calcSetEntropy():
+    classDictionary = classDict.getMalClasses(CLASS_Files)
+
+    classes = [0, 0, 0, 0, 0, 0, 0, 0, 0]
+    for file in ASM_Files:
+        fileStub = file.split('/')[-1][:-4]  # grab all but last chars in file name (removes .asm)
+        malwareClass = int(classDictionary[fileStub]) - 1
+        classes[malwareClass] += 1
+
+    entropy = 0
+    for item in range(len(classes)):
+        prob = classes[item]/len(CLASS_Files)
+        entropy -= prob * math.log(prob, 2)  # 3.0
+
+    return entropy
+
+def avgEntropyPerItem(newClassification):
+    ####################################################################################
+    # See http://www.math.unipd.it/~aiolli/corsi/0708/IR/Lez12.pdf for help
+    ####################################################################################
+
+    #newClassification needs to be in format -> [[fileStub, guessedClass],[fileStub, guessedClass]]
+    guessedClasses = [[],[],[],[],[],[],[],[],[]]
+    for guess in newClassification:
+        guessedClasses[guess[1]].append(guess[0])
+
+    #guessedClasses looks like this [[fileStub,fileStub],[fileStub,fileStub]] for each class
+
+
+    ############################################
+    #setup for comparison
+    ############################################
+
+
+
+    classDictionary = classDict.getMalClasses(CLASS_Files)
+
+    ############################################
+    ############################################
+
+
+    weightedAverageEntropy = 0
+    for guessedClass in range(len(guessedClasses)):
+        #### Calc intermediary Entropy per class ####
+
+        classes = [0, 0, 0, 0, 0, 0, 0, 0, 0]
+        for fileStub in guessedClasses[guessedClass]:
+            trueClass = int(classDictionary[fileStub]) - 1
+            classes[trueClass] += 1
+
+        entropy = 0
+        for item in classes:
+            if item > 0:
+                prob = item/len(guessedClasses[guessedClass])
+                entropy -= prob * math.log(prob, 2)
+
+        weightedAverageEntropy += entropy * (len(guessedClasses[guessedClass])/len(newClassification))
+
+
+    return weightedAverageEntropy
+
+
+def calcInformationGain(origEntropy, newClassification):
+    afterEntropy = avgEntropyPerItem(newClassification)
+    return origEntropy-afterEntropy
+
+#i am going to seek to parallelize the code inside of this function
+#i will be sending out the processes to the CSE computers
+def doSelection():
+
+    #process ->
+    #   1. Go through all files and list all unique ngrams
+    #   2. Split list of all
+
+    doneLog = []
+    batchSize = 5
+    batch = []
+
+    classDictionary = classDict.getMalClasses(CLASS_Files)
+
+    origEntropy = calcSetEntropy()
+
+    myIGFile = open(TRAIN_FILE_PATH + "BatchInformationGain", 'a')
+
+    for fName in range(len(ASM_Files)):
+        if fName % 200 == 0:
+            print(str(fName) + "   |   " + str(len(ASM_Files)))
+
+        fileStub = ASM_Files[fName].split('/')[-1][:-4]
+        file = open(TRAIN_FILE_PATH + "nGramFeatures/" + fileStub + ".txt", 'r')
+        nGramDict = dict(eval(file.readline()))
+        file.close()
+        classMatrixBase = [0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+        for k,v in nGramDict.items():
+            if not k in doneLog:
+                #An ngram has been selected for evaluation
+                doneLog.append(k)
+                batch.append(k)
+
+            if len(batch) == batchSize:
+                #a full batch of ngrams have been selected, go through files and run these ngrams through FFNN
+
+                dataMatrix = []
+                classMatrix = []
+
+
+                for fNameForNGram in ASM_Files:
+                    fileStubForNGram = fNameForNGram.split('/')[-1][:-4]
+                    temp = classMatrixBase[:]
+                    temp[int(classDictionary[fileStubForNGram])-1] = 1
+                    classMatrix.append(temp)
+
+                    try:
+                        file = open(TRAIN_FILE_PATH + "nGramFeatures/" + fileStubForNGram + ".txt", 'r')
+                        finderNGramDict = dict(eval(file.readline()))
+                        file.close()
+                    except FileNotFoundError:
+                        #for some reason there are 2 (so far)
+                        continue
+
+                    myBatchMatrix = []
+
+                    for batchItem in batch:
+                        if batchItem in finderNGramDict:
+                            myBatchMatrix.append(finderNGramDict[batchItem])
+                        else:
+                            myBatchMatrix.append(0)
+
+                    dataMatrix.append(myBatchMatrix)
+
+                #combined = list(zip(dataMatrix, classMatrix, ASM_Files))
+                #random.shuffle(combined)
+
+                #dataMatrix[:], classMatrix[:], file_list = zip(*combined)
+                file_list = ASM_Files[:]
+                myNet = NN.FFNN(dataMatrix, classMatrix, [], [], batchSize, 9)
+                result = myNet.trainAndClassify()
+                findEntropySet = []
+                for item in range(len(result)):
+                    findEntropySet.append([file_list[item].split('/')[-1][:-4], result[item]])
+
+                #the findEntropySet variable is different than what is expected in the function....will need to change the function
+                informationGainDiff = calcInformationGain(origEntropy, findEntropySet)
+
+                myIGFile.write("[" + str(batch) + ", " + str(informationGainDiff) + "]")
+
+                batch = []
+
+    myIGFile.close()
+
+
+doSelection()

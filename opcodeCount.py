@@ -1,3 +1,5 @@
+import re
+
 #############################################################################
 #############################################################################
 #        This file is central to a certain feature of the Malware: n-grams  #
@@ -16,14 +18,16 @@ def op(fName):
     LOOP_THRESHOLD = 200
 
     #Step 1 - grab the 1-gram features
-    myFile = open(fName, 'r', encoding="ISO-8859-1")
+    myFile = open(fName + ".asm", 'r', encoding="ISO-8859-1")
     file = myFile.readlines()
     #Create binary search tree inbetween first and last values (for jumping)
 
     line = 0
     tokenDict = {}
     while not line >= len(file): #FIX THIS
-        tokens = file[line].split()
+        #split the line into two halves, the address and byte data, then opcodes and others
+        #take second half and split it to get tokens
+        tokens = getImportants(file[line])
         for token in range(len(tokens)):
             if tokens[token] in tokenDict:
                 tokenDict[tokens[token]] += 1
@@ -36,7 +40,10 @@ def op(fName):
     jumpRows = []
     locRows = []
     while not line >= len(file):
-        tokens = file[line].split()
+        #split the line into two halves, the address and byte data, then opcodes and others
+        #take second half and split it to get tokens
+        tokens = getImportants(file[line])
+
         for token in range(len(tokens)):
             if tokens[token] == "jmp":
                 if (tokens[-1][0:4] == "loc_"):
@@ -47,7 +54,9 @@ def op(fName):
                         newLine = locRow
                         while not newLine == line: #now we need to find all of the tokens until we hit the beginning of infinite loop again
                             inJump = False
-                            tokensInfinite = file[newLine].split()
+
+                            tokensInfinite = getImportants(file[newLine])
+
                             for tokenInfinite in range(len(tokensInfinite)):
                                 if tokensInfinite[tokenInfinite] == "jmp":
                                     if (tokensInfinite[-1][0:4] == "loc_"): #if we hit another jmp first then we know that we have already hit it before
@@ -125,3 +134,89 @@ def op(fName):
     myFile.close()
 
     return tokenDict
+
+
+#this function is a monster....while I have the file in memory to find the ngrams at all I am going to go ahead and try and collect
+#the feature value...aka, how many times that ngram appears in that file.
+def nGramsTwoThroughFour(fNames, starter):
+    # Step 2 - grab the 2-gram 3-gram and 4-gram features
+    #nGramsList = [[], [], []]
+    #a total list of all nGrams for allFiles. This contains a list of the unique files that have the nGram
+    #nGramsDict = {}
+
+    #214 was where it died last time
+    for fName in range(661, len(fNames)):
+        if fName % 20 == 0:
+            print(str(fName) + "  |  " + str(len(fNames)))
+
+        newDict = {}
+        myFile = open(fNames[fName], 'r', encoding="ISO-8859-1")
+        file = myFile.read()
+
+        ngrams = {}
+
+        for start in starter:
+            line = 0
+            tokenDict = {}
+            reg = re.compile('(' + start + '(?:[\x20\t]+[\S]+){1,3})')
+            m = reg.findall(file)
+
+            for match in m:
+                group = match.split()
+                for num in range(2, 4):
+                    if len(group) >= num:
+                        myGram = ' '.join(group[0:num])
+
+                        #if myGram in nGramsList[len(myGram.split())-2]:
+                            # if this is the first time that this ngram has been found in this file then add it to the list of
+                            # unique files that have this ngram
+                        #   if not fName in nGramsDict[myGram]:
+                               #add filenumber, does not really matter what it is as long as it shows that it is unique.
+                               #at the end the length of the list will show how many files the ngram is in
+                        #       nGramsDict[myGram].append(fName)
+
+                               #if we reach here it is the first time that this nGram has been found in this file
+                        if myGram in newDict:
+                        #   else:
+                            newDict[myGram] += 1
+                        else:
+
+                        #else:
+                        #    nGramsList[len(myGram.split()) - 2].append(myGram)
+                        #    nGramsDict[myGram] = [fName]
+
+                            # if we reach here it is the first time that this nGram has been found in this file
+                            newDict[myGram] = 1
+
+        fileStub = fNames[fName].split('/')[-1][:-4]
+        myStorage = open("/media/napster/data/train/nGramFeatures/" + fileStub + ".txt", 'w')
+        newDict = {k: v for k, v in newDict.items() if v > 1}
+        myStorage.write(str(newDict))
+        myStorage.close()
+
+def getImportants(line):
+    tokens = line.split('\t')
+    if len(tokens) > 2:
+        tokens = ' '.join(tokens[3:])
+        return tokens.split()
+    return []
+
+
+def howManyOccurenceOfOneGram(fNames, ones):
+    onesCount = []
+    for one in range(len(ones)):
+        onesCount.append(0)
+
+    for fName in fNames:
+        myFile = open(fName, 'r', encoding="ISO-8859-1")
+        file = myFile.read()
+
+        for one in range(len(ones)):
+            if file.find(ones[one]) > -1:
+                onesCount[one] += 1
+        myFile.close()
+
+    return onesCount
+
+
+#nGramsTwoThroughFour(['/media/napster/data/train/train/0A32eTdBKayjCWhZqDOQ'], ['mov'])

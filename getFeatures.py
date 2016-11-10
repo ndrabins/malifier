@@ -1,5 +1,6 @@
 import extract_header_image
 import opcodeCount
+import preprocessing
 import segmentCount
 
     #############################################################################
@@ -11,7 +12,7 @@ import segmentCount
     #############################################################################
 
 
-def getFeatures(file):
+def getFeatures(file, feature):
 
     segList = {}
     segCounter = 0
@@ -53,11 +54,12 @@ def getFeatures(file):
     #########################################################
     # FEATURE SET 2 -- Get N-gram Counts --------------------
     #########################################################
+    if (feature == "NGRAM"):
+        # non functional
 
-    # non functional
-
-    #myDict = opcodeCount.op(file)
-    #fileFeatureList.append(myDict)
+        myDict = opcodeCount.op(file)
+        #preprocessing.trim1GramOpcodeDicts(myDict)
+        fileFeatureList.append(myDict)
 
     #########################################################
 
@@ -66,17 +68,18 @@ def getFeatures(file):
     #########################################################
     # FEATURE SET 3 -- Get Header Image ---------------------
     #########################################################
+    if (feature == "CNN"):
 
-    #number of bytes -> 1600
+        #number of bytes -> 1600
 
-    image = extract_header_image.extract_picture_from_bytes(file + ".bytes", 16*64)
+        image = extract_header_image.extract_picture_from_bytes(file + ".bytes", 16*64)
 
-    #all ?? is bytes file so will not use it to classify....
-    #must handle empty list on return
-    if (len(image) == 0):
-        return []
+        #all ?? is bytes file so will not use it to classify....
+        #must handle empty list on return
+        if (len(image) == 0):
+            return []
 
-    fileFeatureList.append(image)
+        fileFeatureList.append(image)
 
     #########################################################
 

@@ -44,7 +44,10 @@ base = [0, 0, 0, 0, 0, 0, 0, 0, 0]
 for file in trainSet:
     row = []
     fileStub = file.split('/')[-1][:-4]  # grab all but last chars in file name (removes .asm)
-    featureList = getFeatures.getFeatures(MALWARE_FILE_PATH + fileStub) #file
+
+    featureListNGRAM = getFeatures.getFeatures(MALWARE_FILE_PATH + fileStub, "NGRAM")  # file
+
+    featureList = getFeatures.getFeatures(MALWARE_FILE_PATH + fileStub, "CNN") #file
 
     #check for error
     if (len(featureList) == 0):
@@ -63,7 +66,7 @@ toTrain.append(labels)
 
 #Run the training
 #MalwareNetwork.train(toTrain)
-CNN.train(toTrain, 5000000)
+CNN.train(toTrain, 500000)
 
 #assemble features in test set
 toTest = []
@@ -72,7 +75,7 @@ testLabels = []
 for file in testSet:
     row = []
     fileStub = file.split('/')[-1][:-4]  # grab all but last chars in file name (removes .asm)
-    featureList = getFeatures.getFeatures(MALWARE_FILE_PATH + fileStub)
+    featureList = getFeatures.getFeatures(MALWARE_FILE_PATH + fileStub, "CNN")
     row.append(featureList)
 
     #check for error
@@ -95,8 +98,7 @@ toTest.append(testLabels)
 
 # Run the training
 # MalwareNetwork.train(toTrain)
-CNN.train(toTrain, 50000)
+CNN.test(toTest)
 
-toTest.append(row)
 
 #MalwareNetwork.test(toTest)

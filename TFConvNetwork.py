@@ -127,11 +127,12 @@ class TFConvNetwork:
         correct_prediction = tf.equal(tf.argmax(self.y_conv, 1), tf.argmax(self.y_, 1))
         accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
         self.sess.run(tf.initialize_all_variables())
-        for i in range((len(testSet)/50)-1):
-            data = numpy.asarray(testSet[0][i*50:(i*50)+50])
-            labels = numpy.asarray(testSet[1][i*50:(i*50)+50])
+        #for i in range((len(testSet)/50)-1):
+        #    data = numpy.asarray(testSet[0][i*50:(i*50)+50])
+        #    labels = numpy.asarray(testSet[1][i*50:(i*50)+50])
 
-        batch = (data, labels)
+        #batch = (data, labels)
+        batch = (testSet[0], testSet[1])
         print("test accuracy %g" % accuracy.eval(feed_dict={
             self.x: batch[0], self.y_: batch[1], self.keep_prob: 1.0}))
 
