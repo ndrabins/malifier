@@ -1,6 +1,12 @@
 import tensorflow as tf
 import numpy
 
+#====================================================================================
+#====================================================================================
+#           A convolutional neural network programmed using tensorflow
+#
+#====================================================================================
+#====================================================================================
 
 class TFConvNetwork:
 
@@ -133,8 +139,9 @@ class TFConvNetwork:
 
         #batch = (data, labels)
         batch = (testSet[0], testSet[1])
-        print("test accuracy %g" % accuracy.eval(feed_dict={
-            self.x: batch[0], self.y_: batch[1], self.keep_prob: 1.0}))
+        #print("test accuracy %g" % accuracy.eval(feed_dict={
+        #    self.x: batch[0], self.y_: batch[1], self.keep_prob: 1.0}))
+        return accuracy.eval(feed_dict={self.x: batch[0], self.y_: batch[1], self.keep_prob: 1.0})
 
 #HELPER FUNCTIONS
 def weight_variable(shape):

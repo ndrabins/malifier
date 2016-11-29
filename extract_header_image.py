@@ -2,6 +2,13 @@ import numpy
 import scipy.misc
 from scipy.misc import imsave
 
+#==========================================================================
+#==========================================================================
+#           Creates a 1D byte array from a byte file for
+#           the use in a convolutional neural network
+#==========================================================================
+#==========================================================================
+
 def extract_picture_from_bytes(filename, num_bytes=0):
     f = open(filename)
 
@@ -48,7 +55,6 @@ def extract_picture_from_bytes(filename, num_bytes=0):
     #using this I can open it and see what sort of images I will be getting
 
     #shaped_pixel_array2 = numpy.reshape(pixel_array, (width, width))
-    #scipy.misc.imsave('/home/napster/outfile.png', shaped_pixel_array2)
 
     #instead of creating new files like below I am going to pass
     #imsave(filename + '.png', shaped_pixel_array)

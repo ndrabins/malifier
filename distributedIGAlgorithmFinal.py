@@ -4,7 +4,15 @@ import math
 import glob
 import tensorflow as tf
 
-TRAIN_FILE_PATH = "/media/napster/data/train/"
+#============================================================
+#============================================================
+#  This file sits on JOHN in the /tmp/mmays/informationGain/toRemote
+#  folder. It is what the code runs on through the distributed tasks file
+#============================================================
+#============================================================
+
+TRAIN_FILE_PATH = "/tmp/mmays/informationGain/" #sys.argv[0]
+#TRAIN_FILE_PATH = "/media/napster/data/train/"
 MALWARE_FILE_PATH = TRAIN_FILE_PATH + "nGramFeatures/"
 
 ASM_Files = glob.glob(MALWARE_FILE_PATH + "*.txt")
@@ -73,17 +81,17 @@ def getMalClasses(fName):
 
     return classDictionary
 
-def calcSetEntropy(set):
+def calcSetEntropy(someSet):
     classDictionary = getMalClasses(CLASS_Files)
 
     classes = [0, 0, 0, 0, 0, 0, 0, 0, 0]
-    for fileStub in set:
+    for fileStub in someSet:
         malwareClass = int(classDictionary[fileStub]) - 1
         classes[malwareClass] += 1
 
     entropy = 0
     for item in range(len(classes)):
-        prob = classes[item]/len(set)
+        prob = (1.0*classes[item])/len(someSet)
         entropy -= prob * math.log(prob, 2)  # 3.0
 
     return entropy
@@ -124,7 +132,7 @@ def avgEntropyPerItem(newClassification):
         entropy = 0
         for item in classes:
             if item > 0:
-                prob = item/len(guessedClasses[guessedClass])
+                prob = (1.0*item)/len(guessedClasses[guessedClass])
                 entropy -= prob * math.log(prob, 2)
 
         weightedAverageEntropy += entropy * (len(guessedClasses[guessedClass])/len(newClassification))
@@ -149,7 +157,7 @@ def createEvenTestSet(classDictionary):
         num = list(classDictionary.values()).count(str(classVals[counter]))
         if num < min:
             min = num
-
+    
     for item in range(len(ASM_Files)):
         if counterHolder[classVals.index(int(classDictionary[ASM_Files[item].split('/')[-1][:-4]]))] < min:
             classesSet.append(ASM_Files[item].split('/')[-1][:-4])
@@ -164,8 +172,8 @@ def runProcessBacklogItem(batch, titleNum):
 
     batch_data_sets = []
     for subBatch in batch:
-        batch_data_sets.append([])
-
+		batch_data_sets.append([])
+    
     classMatrix = []
 
     classMatrixBase = [0, 0, 0, 0, 0, 0, 0, 0, 0]
@@ -174,9 +182,11 @@ def runProcessBacklogItem(batch, titleNum):
     mySet = createEvenTestSet(classDictionary)
     origEntropy = calcSetEntropy(mySet)
 
+    print("Length set: " + str(len(mySet)))
+
     for fileStubForNGram in mySet:
         temp = classMatrixBase[:]
-        temp[int(classDictionary[fileStubForNGram]) - 1] = 1
+        temp[int(classDictionary[fileStubForNGram])-1] = 1
         classMatrix.append(temp)
 
         try:
@@ -184,7 +194,7 @@ def runProcessBacklogItem(batch, titleNum):
             finderNGramDict = dict(eval(file.readline()))
             file.close()
         except FileNotFoundError:
-            # for some reason there are 2 (so far)
+            #for some reason there are 2 (so far)
             continue
 
         for subBatch in range(len(batch)):
@@ -197,10 +207,10 @@ def runProcessBacklogItem(batch, titleNum):
 
             batch_data_sets[subBatch].append(myBatchMatrix)
 
-    # combined = list(zip(dataMatrix, classMatrix, ASM_Files))
-    # random.shuffle(combined)
+    #combined = list(zip(dataMatrix, classMatrix, ASM_Files))
+    #random.shuffle(combined)
 
-    # dataMatrix[:], classMatrix[:], file_list = zip(*combined)
+    #dataMatrix[:], classMatrix[:], file_list = zip(*combined)
     file_list = ASM_Files[:]
 
     returnData = []
@@ -215,6 +225,17 @@ def runProcessBacklogItem(batch, titleNum):
         returnData.append([batch[subBatch], informationGainDiff])
 
     uniqueID = str(titleNum)
-    resultFile = open(TRAIN_FILE_PATH + "informationGain/" + uniqueID, "a")
+    resultFile = open(TRAIN_FILE_PATH + "results/" + uniqueID, "a")
     for item in returnData:
         resultFile.write(str(item) + "\n")
+
+batches = list(eval(sys.argv[1]))
+tmpTaskFile = open(TRAIN_FILE_PATH + "TaskLog.txt", 'r')
+vals = tmpTaskFile.readlines()
+tmpTaskFile.close()
+
+processVals = []
+for batch in batches:
+    processVals.append(list(eval(vals[batch])))
+    
+runProcessBacklogItem(processVals, batches[0])

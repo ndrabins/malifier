@@ -12,7 +12,7 @@ import segmentCount
     #############################################################################
 
 
-def getFeatures(file, feature):
+def getFeatures(file, feature, info={}):
 
     segList = {}
     segCounter = 0
@@ -72,7 +72,7 @@ def getFeatures(file, feature):
 
         #number of bytes -> 1600
 
-        image = extract_header_image.extract_picture_from_bytes(file + ".bytes", 16*64)
+        image = extract_header_image.extract_picture_from_bytes(file + ".bytes", info["X"]*info["Y"])
 
         #all ?? is bytes file so will not use it to classify....
         #must handle empty list on return

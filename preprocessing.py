@@ -4,6 +4,13 @@ import glob
 import opcodeCount
 import math
 
+#=============================================================================
+#=============================================================================
+#   Functions in this file were used individually to start building the
+#   opcode n-grams based on one-grams
+#=============================================================================
+#=============================================================================
+
 def trimOneGramsBasedOnCount():
     file = open("/media/napster/data/train/one_gram_count.txt", 'r')
     both = list(eval(file.readline()))
