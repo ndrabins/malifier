@@ -1,4 +1,3 @@
-import NeuralNetwork
 import glob
 
 import numpy as np
@@ -7,6 +6,7 @@ import TFConvNetwork
 import classDict
 import getFeatures
 import numpy
+import FeedForwardNeuralNetwork
 import distributedIGAlgorithm
 
 TRAIN_FILE_PATH = "/media/napster/data/train/" #"F:/train/"
@@ -15,124 +15,140 @@ MALWARE_FILE_PATH = TRAIN_FILE_PATH + "train/"
 ASM_Files = glob.glob(MALWARE_FILE_PATH + "*.asm")
 CLASS_Files = TRAIN_FILE_PATH + "trainLabels.txt"
 
-INPUT_COUNT = 458
-HIDDEN_NODES = 2
-OUTPUT_COUNT = 9
+NGRAM_FEATURES_FILENAME = "aboveZeroNew.txt"
 
-#create neural network
-MalwareNetwork = NeuralNetwork.NN(INPUT_COUNT, HIDDEN_NODES, OUTPUT_COUNT)
-
-#build CNN
-CNN_ITERATIONS = 200000
+#CNN SPECS
+CNN_ITERATIONS = 50
 X_DIMENSION = 16
 Y_DIMENSION = 64
-CNN = TFConvNetwork.TFConvNetwork(X_DIMENSION, Y_DIMENSION)
+
+#NGRAM SPECS
+iterations = 20
 
 #build info dict for getting CNN features
 info = {}
 info["X"] = X_DIMENSION
 info["Y"] = Y_DIMENSION
 
+#build info dict for getting nGram features
+nGramFeaturesFile = open(TRAIN_FILE_PATH + "informationGain/" + NGRAM_FEATURES_FILENAME, 'r')
+allFeatures = nGramFeaturesFile.readlines()
+info["featureBatch"] = []
+for feature in allFeatures:
+    info["featureBatch"].append(list(eval(feature))[0])
+
 #Get the lookup table for Malware Classes
 classDictionary = classDict.getMalClasses(CLASS_Files)
 
 #Create Simple Train/Test partition
 mySet = tools.createEvenTestSet(classDictionary, ASM_Files)
-
+#mySet = tools.buildAllSet(ASM_Files)
 
 #Assemble features in train set
 #==================================
 # This is the section that will take the longest time running since it will actually be extracting the features of
 # the malware for each file. This could be a lengthy process.
 #==================================
-accuracy = 0
+CNN_accuracy = 0
+NGRAM_accuracy = 0
+combAccPercent = 0
+numCrossVals = 10
 
-for crossVal in range(10):
+data_cnn = []
+data_nGram = []
+base = [0, 0, 0, 0, 0, 0, 0, 0, 0]
+labels = []
+for fileStub in mySet:
+    featureListNGRAM = getFeatures.getFeatures(fileStub, "NGRAM", info)
+    featureList = getFeatures.getFeatures(MALWARE_FILE_PATH + fileStub, "CNN", info)
 
-    part = int((len(mySet) / 10) * crossVal)  # Creates a partition at 2/3
-    part2 = int((len(mySet) / 10) * (crossVal+1))  # Creates a partition at 2/3
-    testSet = mySet[part:part2]  # ASM_Files[part:]  #Second 1/3 is testing
+    #check for error
+    if (len(featureList) == 0 or len(featureListNGRAM) == 0):
+        #print("FEATURE GRAB ERROR")
+        #print("Not adding file: " + fileStub + "to the train set")
+        continue
 
-    sect1 = False
-    if part > 0:
-        section1 = mySet[0:part]
-        sect1 = True
-    sect2 = False
-    if part2 < (len(mySet) - 1):
-        section2 = mySet[part2:len(mySet)]
-        sect2 = True
+    #Add values to data matrices (one matrix per classifier)
+    data_nGram.append(numpy.asarray(featureListNGRAM))
+    data_cnn.append(numpy.asarray(featureList))
 
-    if sect1 and sect2:
-        trainSet = np.concatenate([section1, section2])
-    elif sect1:
-        trainSet = section1
-    else:
-        trainSet = section2
+    #Add classes to class matrix
+    malwareClass = classDictionary[fileStub]
+    base2 = base[:]
+    base2[int(malwareClass)-1] = 1
+    labels.append(numpy.asarray(base2[:]))
 
-    toTrain = []
-    data = []
-    labels = []
+#data_nGram = tools.normalize(numpy.asarray(data_nGram))
+
+print("-- Built data set --")
+
+for crossVal in range(numCrossVals):
+    print("CrossVal: " + str(crossVal) + " | " + str(numCrossVals))
+    trainSet, testSet = tools.createCrossValSets(crossVal, numCrossVals, len(data_cnn))
+
+    cv_data_cnn = []
+    cv_data_nGram = []
+    cv_labels = []
     base = [0, 0, 0, 0, 0, 0, 0, 0, 0]
 
-    for fileStub in trainSet:
-        row = []
-        #fileStub = file.split('/')[-1][:-4]  # grab all but last chars in file name (removes .asm)
+    for num in trainSet:
+        #Add values to data matrices (one matrix per classifier)
+        cv_data_nGram.append(data_nGram[num-1])
+        cv_data_cnn.append(data_cnn[num-1])
 
-        #featureListNGRAM = getFeatures.getFeatures(MALWARE_FILE_PATH + fileStub, "NGRAM")  # file
+        #Add classes to class matrix
+        cv_labels.append(labels[num-1])
 
-        featureList = getFeatures.getFeatures(MALWARE_FILE_PATH + fileStub, "CNN", info) #file
-
-        #check for error
-        if (len(featureList) == 0):
-            continue
-
-        data.append(numpy.asarray(featureList[0]))
-        #row.append(featureList)
-        malwareClass = classDictionary[fileStub]
-        base2 = base[:]
-        base2[int(malwareClass)-1] = 1
-        #row.append(numpy.asarray(base2[:]))
-        labels.append(numpy.asarray(base2[:]))
-
-    toTrain.append(data)
-    toTrain.append(labels)
-
-    #Run the training
-    #MalwareNetwork.train(toTrain)
-    CNN.train(toTrain, CNN_ITERATIONS)
-
-    #assemble features in test set
-    toTest = []
-    testData = []
+    test_data_CNN = []
+    test_data_nGram = []
     testLabels = []
-    for fileStub in testSet:
-        row = []
-        #fileStub = file.split('/')[-1][:-4]  # grab all but last chars in file name (removes .asm)
-        featureList = getFeatures.getFeatures(MALWARE_FILE_PATH + fileStub, "CNN")
-        row.append(featureList)
+    for num in testSet:
+        # Add values to data matrices (one matrix per classifier)
+        test_data_nGram.append(data_nGram[num-1])
+        test_data_CNN.append(data_cnn[num-1])
 
-        #check for error
-        if (len(featureList) == 0):
-            continue
+        # Add test classes to class matrix
+        testLabels.append(labels[num-1])
 
-        malwareClass = classDictionary[fileStub]
-        row.append([int(malwareClass)])
 
-        testData.append(numpy.asarray(featureList[0]))
-        # row.append(featureList)
-        malwareClass = classDictionary[fileStub]
-        base2 = base[:]
-        base2[int(malwareClass) - 1] = 1
-        # row.append(numpy.asarray(base2[:]))
-        testLabels.append(numpy.asarray(base2[:]))
+    #Run the training/testing
 
-    toTest.append(testData)
-    toTest.append(testLabels)
+    #build CNN
+    print("                         | Training -> CNN")
+    CNN = TFConvNetwork.TFConvNetwork(X_DIMENSION, Y_DIMENSION, 9, cv_data_cnn, cv_labels, test_data_CNN, testLabels)
+    CNN_DATA = CNN.trainAndClassify(CNN_ITERATIONS)
+    print("                         | " + str(CNN_DATA[1]))
+    CNN_accuracy += CNN_DATA[1]
 
-    # Run the training
-    # MalwareNetwork.train(toTrain)
-    accuracy += CNN.test(toTest)
+    # build FFNN
+    print("        | Training -> FFNN")
+    FFNN = FeedForwardNeuralNetwork.FFNN(cv_data_nGram, cv_labels, test_data_nGram, testLabels, len(info["featureBatch"]), 9, iterations)
+    FFNN_DATA = FFNN.trainAndClassify()
+    print("          | " + str(FFNN_DATA[1]))
+    NGRAM_accuracy += FFNN_DATA[1]
 
-finalAccuracy = accuracy/10
-print("Final Cross Val accuracy: " + str(finalAccuracy))
-#MalwareNetwork.test(toTest)
+    print(str(crossVal).rjust(24) + " | Final Cross Val Result -> ")
+    print("                         | CNN -> " + str(CNN_DATA[1]))
+    print("                         | FFNN -> " + str(FFNN_DATA[1]))
+    combVals = (CNN_DATA[1]*CNN_DATA[0]) + (FFNN_DATA[1]*FFNN_DATA[0])
+    tempCombAcc = np.mean(np.argmax(testLabels, axis=1) == np.mean(np.argmax(combVals, axis=1)))
+    combAccPercent += tempCombAcc
+    print("                         | Combined -> " + str(combAccPercent))
+
+
+finalAccuracyCNN = CNN_accuracy/numCrossVals
+print("Final Cross Val accuracy --> CNN: " + str(finalAccuracyCNN))
+
+finalAccuracyNGRAM = NGRAM_accuracy/numCrossVals
+print("Final Cross Val accuracy --> FFNN: " + str(finalAccuracyNGRAM))
+
+finalAccuracyComb = combAccPercent/numCrossVals
+print("Final Cross Val accuracy --> Combined: " + str(finalAccuracyComb))
+
+#!!!!!!!!!!!!!!!!!!!!!!
+#Final Cross Val accuracy --> FFNN: 0.9502680109648564
+#!!!!!!!!!!!!!!!!!!!!!!
+
+#!!!!!!!!!!!!!!!!!!!!!!
+#Final Cross Val accuracy --> CNN: 0.864428036765
+#!!!!!!!!!!!!!!!!!!!!!!

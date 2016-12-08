@@ -54,11 +54,12 @@ def extract_picture_from_bytes(filename, num_bytes=0):
     #this puts the array in the shape it will be for the CNN and then saves it as an image
     #using this I can open it and see what sort of images I will be getting
 
-    #shaped_pixel_array2 = numpy.reshape(pixel_array, (width, width))
-
+    #REMOVE LATER v
+    shaped_pixel_array2 = numpy.reshape(pixel_array, (64, 16))
+    #imsave("/media/napster/data/train/outfile.png", shaped_pixel_array2)
     #instead of creating new files like below I am going to pass
-    #imsave(filename + '.png', shaped_pixel_array)
-    f.close()
+
+    #f.close()
     return shaped_pixel_array
 
 #

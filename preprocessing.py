@@ -3,6 +3,7 @@ import string
 import glob
 import opcodeCount
 import math
+from os import listdir
 
 #=============================================================================
 #=============================================================================
@@ -114,5 +115,28 @@ def pareOneGrams():
     #print(len(instrFinal))
     #print(len(myInstList))
 
+def combineNGramFiles():
+    PATH = "/media/napster/data/train/informationGain/"
+    DATA_PATH = PATH + "resultsNew/results/"
+    data_files = listdir(DATA_PATH)
+
+    aboveZero = []
+
+    for myFile in data_files:
+        currFile = open(DATA_PATH + myFile, 'r')
+        for item in currFile.readlines():
+            listItem = list(eval(item))
+            if listItem[1] > 0:
+                for single in listItem[0]:
+                    if not single in aboveZero:
+                        aboveZero.append([single])
+
+        currFile.close()
 
 
+    combinedFile = open(PATH + "aboveZeroNew.txt", 'a')
+    for nGram in aboveZero:
+        combinedFile.write(str(nGram) + "\n")
+    combinedFile.close()
+
+#combineNGramFiles()

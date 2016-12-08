@@ -9,14 +9,14 @@ def rebuildString(tasks, startNum):
 
     return newString
 
-file = open("/media/napster/data/train/TaskLog.txt", 'r')
+file = open("/media/napster/data/train/informationGain/aboveZero.txt", 'r')
 tasks = file.readlines()
 file.close()
 
 endList = []
 
 batch = []
-start = 2100
+start = 1
 for taskNum in range(start, len(tasks)):
     task = list(eval(tasks[taskNum]))
     batch.append(task)

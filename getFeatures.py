@@ -1,6 +1,5 @@
 import extract_header_image
 import opcodeCount
-import preprocessing
 import segmentCount
 
     #############################################################################
@@ -12,11 +11,12 @@ import segmentCount
     #############################################################################
 
 
+TRAIN_FILE_PATH = "/media/napster/data/train/"
+
 def getFeatures(file, feature, info={}):
 
     segList = {}
     segCounter = 0
-    fileFeatureList = []
 
     #########################################################
     # FEATURE SET  1 -- Get Seg Count -----------------------
@@ -56,10 +56,25 @@ def getFeatures(file, feature, info={}):
     #########################################################
     if (feature == "NGRAM"):
         # non functional
+        try:
+            file = open(TRAIN_FILE_PATH + "nGramFeatures/" + file + ".txt", 'r')
+            finderNGramDict = dict(eval(file.readline()))
+            file.close()
+        except FileNotFoundError:
+            # for some reason there are files missing
+            return []
 
-        myDict = opcodeCount.op(file)
+        myBatchMatrix = []
+        for item in range(len(info["featureBatch"])):
+            if info["featureBatch"][item] in finderNGramDict:
+                myBatchMatrix.append(finderNGramDict[info["featureBatch"][item]])
+            else:
+                myBatchMatrix.append(0)
+
+
+        #myDict = opcodeCount.op(file)
         #preprocessing.trim1GramOpcodeDicts(myDict)
-        fileFeatureList.append(myDict)
+        return myBatchMatrix
 
     #########################################################
 
@@ -79,9 +94,8 @@ def getFeatures(file, feature, info={}):
         if (len(image) == 0):
             return []
 
-        fileFeatureList.append(image)
+        return image
 
     #########################################################
 
 
-    return fileFeatureList

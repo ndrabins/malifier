@@ -211,7 +211,7 @@ def runProcessBacklogItem(batch, titleNum):
     #random.shuffle(combined)
 
     #dataMatrix[:], classMatrix[:], file_list = zip(*combined)
-    file_list = ASM_Files[:]
+    #file_list = ASM_Files[:]
 
     returnData = []
     for subBatch in range(len(batch)):
@@ -219,7 +219,7 @@ def runProcessBacklogItem(batch, titleNum):
         result = myNet.trainAndClassify()
         findEntropySet = []
         for item in range(len(result)):
-            findEntropySet.append([file_list[item].split('/')[-1][:-4], result[item]])
+            findEntropySet.append([mySet[item], result[item]])
 
         informationGainDiff = calcInformationGain(origEntropy, findEntropySet)
         returnData.append([batch[subBatch], informationGainDiff])

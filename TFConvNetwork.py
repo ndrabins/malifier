@@ -1,5 +1,5 @@
 import tensorflow as tf
-import numpy
+import numpy as np
 
 #====================================================================================
 #====================================================================================
@@ -10,138 +10,104 @@ import numpy
 
 class TFConvNetwork:
 
-    def __init__(self, iWidth, iHeight):
+    def __init__(self, iWidth, iHeight, outputSize, trainData, trainLabels, testData, testLabels):
+        tf.reset_default_graph()
         self.imageWidth = iWidth
         self.imageHeight = iHeight
-        self.sess = tf.InteractiveSession()
 
         # the 1600 is the number of pixels in an image and the 10 is the number of images in a batch
         # ...aka for labels
-        self.x = tf.placeholder(tf.float32, shape=[None, iWidth*iHeight])
-        self.y_ = tf.placeholder(tf.float32, shape=[None, 9])
+        self.X = tf.placeholder(tf.float32, shape=[None, iHeight, iWidth, 1])
+        self.Y = tf.placeholder(tf.float32, shape=[None, outputSize])
 
-        # ============================================================================
-        # ============================================================================
-        #                       FIRST CONVOLUTIONAL LAYER
-        # ============================================================================
-        # ============================================================================
+        self.trX = np.asarray(trainData).reshape(-1, iHeight, iWidth, 1)
+        self.trY = trainLabels
 
-        # 5x5 patch with 1 input and 32 output features
-        W_conv1 = weight_variable([5, 5, 1, 32])
-        b_conv1 = bias_variable([32])
+        self.teX = np.asarray(testData).reshape(-1, iHeight, iWidth, 1)
+        self.teY = testLabels
 
-        # 28x28 input image with 1 color layer (this will remain one since it is byte "image")
-        x_image = tf.reshape(self.x, [-1, self.imageWidth, self.imageHeight, 1])
+        w = self.init_weights([3, 3, 1, 32])  # 3x3x1 conv, 32 outputs
+        w2 = self.init_weights([3, 3, 32, 64])  # 3x3x32 conv, 64 outputs
+        w3 = self.init_weights([3, 3, 64, 128])  # 3x3x32 conv, 128 outputs
+        w4 = self.init_weights([128 * 4 * 4, 625])  # FC 128 * 4 * 4 inputs, 625 outputs
+        w_o = self.init_weights([625, outputSize])  # FC 625 inputs, 10 outputs (labels)
 
-        # perform convolution on x_image and W_conv1 and add bias before doing ReLU)
-        h_conv1 = tf.nn.relu(conv2d(x_image, W_conv1) + b_conv1)
+        self.p_keep_conv = tf.placeholder("float")
+        self.p_keep_hidden = tf.placeholder("float")
 
-        # perform max pooling
-        h_pool1 = max_pool_2x2(h_conv1)
+        self.py_x = self.model(self.X, w, w2, w3, w4, w_o, self.p_keep_conv, self.p_keep_hidden)
+        self.cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(self.py_x, self.Y))
+        self.train_op = tf.train.RMSPropOptimizer(0.001, 0.9).minimize(self.cost)
+        self.predict_op = tf.argmax(self.py_x, 1)
 
-        # ============================================================================
-        # ============================================================================
-        #                       SECOND CONVOLUTIONAL LAYER
-        # ============================================================================
-        # ============================================================================
+        self.loose_predict_op = self.py_x
 
-        W_conv2 = weight_variable([5, 5, 32, 64])
-        b_conv2 = bias_variable([64])
 
-        h_conv2 = tf.nn.relu(conv2d(h_pool1, W_conv2) + b_conv2)
-        h_pool2 = max_pool_2x2(h_conv2)
+    def model(self, X, w, w2, w3, w4, w_o, p_keep_conv, p_keep_hidden):
+        l1a = tf.nn.relu(tf.nn.conv2d(X, w,  # l1a shape=(?, 28, 28, 32)
+                                      strides=[1, 1, 1, 1], padding='SAME'))
+        l1 = tf.nn.max_pool(l1a, ksize=[1, 2, 2, 1],  # l1 shape=(?, 14, 14, 32)
+                            strides=[1, 2, 2, 1], padding='SAME')
+        l1 = tf.nn.dropout(l1, p_keep_conv)
 
-        currSize = int((iWidth/2)/2)
-        currSize2 = int((iHeight / 2) / 2)
+        l2a = tf.nn.relu(tf.nn.conv2d(l1, w2,  # l2a shape=(?, 14, 14, 64)
+                                      strides=[1, 1, 1, 1], padding='SAME'))
+        l2 = tf.nn.max_pool(l2a, ksize=[1, 2, 2, 1],  # l2 shape=(?, 7, 7, 64)
+                            strides=[1, 2, 2, 1], padding='SAME')
+        l2 = tf.nn.dropout(l2, p_keep_conv)
 
-        W_fc1 = weight_variable([currSize * currSize2 * 64, 1024])
-        b_fc1 = bias_variable([1024])
+        l3a = tf.nn.relu(tf.nn.conv2d(l2, w3,  # l3a shape=(?, 7, 7, 128)
+                                      strides=[1, 1, 1, 1], padding='SAME'))
+        l3 = tf.nn.max_pool(l3a, ksize=[1, 2, 2, 1],  # l3 shape=(?, 4, 4, 128)
+                            strides=[1, 2, 2, 1], padding='SAME')
+        l3 = tf.reshape(l3, [-1, w4.get_shape().as_list()[0]])  # reshape to (?, 2048)
+        l3 = tf.nn.dropout(l3, p_keep_conv)
 
-        # ============================================================================
-        # ============================================================================
-        #                       DENSELY CONNECTED LAYER
-        # ============================================================================
-        # ============================================================================
+        l4 = tf.nn.relu(tf.matmul(l3, w4))
+        l4 = tf.nn.dropout(l4, p_keep_hidden)
 
-        h_pool2_flat = tf.reshape(h_pool2, [-1, currSize * currSize2 * 64])
-        h_fc1 = tf.nn.relu(tf.matmul(h_pool2_flat, W_fc1) + b_fc1)
+        pyx = tf.matmul(l4, w_o)
+        return pyx
 
-        # ============================================================================
-        # ============================================================================
-        #                       DROPOUT (To avoid overfitting)
-        # ============================================================================
-        # ============================================================================
-
-        self.keep_prob = tf.placeholder(tf.float32)
-        h_fc1_drop = tf.nn.dropout(h_fc1, self.keep_prob)
-
-        # ============================================================================
-        # ============================================================================
-        #                       READOUT (with softmax)
-        # ============================================================================
-        # ============================================================================
-
-        W_fc2 = weight_variable([1024, 9])
-        b_fc2 = bias_variable([9])
-
-        self.y_conv = tf.nn.softmax(tf.matmul(h_fc1_drop, W_fc2) + b_fc2)
-
-#============================================================================
+    #============================================================================
 #============================================================================
 #                       This runs the code
 #============================================================================
 #============================================================================
+    def init_weights(self, shape):
+        return tf.Variable(tf.random_normal(shape, stddev=0.01))
 
-    def train(self, trainSet, iter):
-        cross_entropy = tf.reduce_mean(-tf.reduce_sum(self.y_ * tf.log(self.y_conv), reduction_indices=[1]))
-        train_step = tf.train.AdamOptimizer(1e-4).minimize(cross_entropy)
-        correct_prediction = tf.equal(tf.argmax(self.y_conv, 1), tf.argmax(self.y_,1))
-        accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
-        self.sess.run(tf.initialize_all_variables())
+    def trainAndClassify(self, iter):
+        with tf.Session() as sess:
+            sess.run(tf.initialize_all_variables())
+            print("         --------    Train  |  Test")
+            for i in range(iter):
+                for batch in range(0, len(self.trX) - 50, 50):
+                    sess.run(self.train_op, feed_dict={self.X: self.trX[batch:batch+50], self.Y: self.trY[batch:batch+50],
+                                                      self.p_keep_conv: 0.8, self.p_keep_hidden: 0.5})
 
-        #20000 iterations
-        spot = 0
-        spot2 = 0
-        step = 50
-        for i in range(iter):
-            spot2 = spot + 50
-            if (spot2 >= len(trainSet[0])):
-                spot2 = spot2 % len(trainSet[0])
+                if i % 1 == 0:
+                    trainVal = round(np.mean(np.argmax(self.trY, axis=1) ==
+                                      sess.run(self.predict_op, feed_dict={self.X: self.trX,
+                                                                                self.p_keep_conv: 1.0,
+                                                                                self.p_keep_hidden: 1.0})),4)
 
-                data = numpy.asarray(trainSet[0][spot:len(trainSet[0])-1] + trainSet[0][0:spot2])
-                labels = numpy.asarray(trainSet[1][spot:len(trainSet[1]) - 1] + trainSet[1][0:spot2])
-            else:
-                data = numpy.asarray(trainSet[0][spot:spot2])
-                labels = numpy.asarray(trainSet[1][spot:spot2])
-                #labels = numpy.reshape(labels, 9, 1)
+                    testVal =  round(np.mean(np.argmax(self.teY, axis=1) ==
+                                                  sess.run(self.predict_op, feed_dict={self.X: self.teX,
+                                                                                       self.p_keep_conv: 1.0,
+                                                                                       self.p_keep_hidden: 1.0})),4)
 
-            batch = (data, labels)
-            spot = spot2
 
-            if i%100 == 0:
-                train_accuracy = accuracy.eval(feed_dict={
-                    self.x:batch[0], self.y_: batch[1], self.keep_prob: 1.0})
-                print("step %d, training accuracy %g"%(i, train_accuracy))
-                train_step.run(feed_dict={self.x: batch[0], self.y_: batch[1], self.keep_prob: 0.5})
+                    print("           ", str(i).ljust(7), str(trainVal).ljust(6), " | ", str(testVal).ljust(6))
+            value=  np.mean(np.argmax(self.teY, axis=1) ==
+                                                  sess.run(self.predict_op, feed_dict={self.X: self.teX,
+                                                                                       self.p_keep_conv: 1.0,
+                                                                                       self.p_keep_hidden: 1.0}))
 
-        #print("test accuracy %g"%accuracy.eval(feed_dict={
-        #    self.x: mnist.test.images, self.y_: mnist.test.labels, self.keep_prob: 1.0}))
+            value2 = sess.run(self.loose_predict_op, feed_dict={self.X: self.teX, self.p_keep_conv: 1.0, self.p_keep_hidden: 1.0})
+            return [value2, value]
 
-    def test(self, testSet):
-        cross_entropy = tf.reduce_mean(-tf.reduce_sum(self.y_ * tf.log(self.y_conv), reduction_indices=[1]))
-        train_step = tf.train.AdamOptimizer(1e-4).minimize(cross_entropy)
-        correct_prediction = tf.equal(tf.argmax(self.y_conv, 1), tf.argmax(self.y_, 1))
-        accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
-        self.sess.run(tf.initialize_all_variables())
-        #for i in range((len(testSet)/50)-1):
-        #    data = numpy.asarray(testSet[0][i*50:(i*50)+50])
-        #    labels = numpy.asarray(testSet[1][i*50:(i*50)+50])
 
-        #batch = (data, labels)
-        batch = (testSet[0], testSet[1])
-        #print("test accuracy %g" % accuracy.eval(feed_dict={
-        #    self.x: batch[0], self.y_: batch[1], self.keep_prob: 1.0}))
-        return accuracy.eval(feed_dict={self.x: batch[0], self.y_: batch[1], self.keep_prob: 1.0})
 
 #HELPER FUNCTIONS
 def weight_variable(shape):
