@@ -86,7 +86,7 @@ class FFNN:
 
                 print("           ", str(i).ljust(7), str(trainVal).ljust(6), " | ", str(testVal).ljust(6))
 
-                if testVal > 0.98 and trainVal > 0.98:
+                if testVal > 0.97 and trainVal > 0.97:
                     break
 
             value = sess.run(self.predict_op, feed_dict={self.X: self.teX, self.p_keep_input: 1.0,

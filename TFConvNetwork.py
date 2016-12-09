@@ -4,7 +4,6 @@ import numpy as np
 #====================================================================================
 #====================================================================================
 #           A convolutional neural network programmed using tensorflow
-#
 #====================================================================================
 #====================================================================================
 
@@ -69,11 +68,7 @@ class TFConvNetwork:
         pyx = tf.matmul(l4, w_o)
         return pyx
 
-    #============================================================================
-#============================================================================
-#                       This runs the code
-#============================================================================
-#============================================================================
+
     def init_weights(self, shape):
         return tf.Variable(tf.random_normal(shape, stddev=0.01))
 
@@ -86,19 +81,22 @@ class TFConvNetwork:
                     sess.run(self.train_op, feed_dict={self.X: self.trX[batch:batch+50], self.Y: self.trY[batch:batch+50],
                                                       self.p_keep_conv: 0.8, self.p_keep_hidden: 0.5})
 
-                if i % 1 == 0:
-                    trainVal = round(np.mean(np.argmax(self.trY, axis=1) ==
-                                      sess.run(self.predict_op, feed_dict={self.X: self.trX,
-                                                                                self.p_keep_conv: 1.0,
-                                                                                self.p_keep_hidden: 1.0})),4)
+                trainVal = round(np.mean(np.argmax(self.trY, axis=1) ==
+                                  sess.run(self.predict_op, feed_dict={self.X: self.trX,
+                                                                            self.p_keep_conv: 1.0,
+                                                                            self.p_keep_hidden: 1.0})),4)
 
-                    testVal =  round(np.mean(np.argmax(self.teY, axis=1) ==
-                                                  sess.run(self.predict_op, feed_dict={self.X: self.teX,
-                                                                                       self.p_keep_conv: 1.0,
-                                                                                       self.p_keep_hidden: 1.0})),4)
+                testVal =  round(np.mean(np.argmax(self.teY, axis=1) ==
+                                              sess.run(self.predict_op, feed_dict={self.X: self.teX,
+                                                                                   self.p_keep_conv: 1.0,
+                                                                                   self.p_keep_hidden: 1.0})),4)
 
 
-                    print("           ", str(i).ljust(7), str(trainVal).ljust(6), " | ", str(testVal).ljust(6))
+                print("           ", str(i).ljust(7), str(trainVal).ljust(6), " | ", str(testVal).ljust(6))
+
+                if testVal > 0.9 and trainVal > 0.9:
+                    break
+
             value=  np.mean(np.argmax(self.teY, axis=1) ==
                                                   sess.run(self.predict_op, feed_dict={self.X: self.teX,
                                                                                        self.p_keep_conv: 1.0,

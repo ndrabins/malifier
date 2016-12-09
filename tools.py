@@ -105,3 +105,16 @@ def normalize(data_set):
             data_set[row][col] = (data_set[row][col]-minVal)/(maxVal - minVal)
 
     return data_set
+
+def miniNormalize(data_set):
+    tempData = data_set[:]
+    for item in range(len(data_set)):
+        minVal = min(tempData[item])
+        maxVal = max(tempData[item])
+        if maxVal == minVal:
+            maxVal = 1
+
+        for col in range(len(data_set[item])):
+            tempData[item][col] = (tempData[item][col] - minVal) / (maxVal - minVal)
+
+    return tempData

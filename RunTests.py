@@ -41,8 +41,8 @@ for feature in allFeatures:
 classDictionary = classDict.getMalClasses(CLASS_Files)
 
 #Create Simple Train/Test partition
-mySet = tools.createEvenTestSet(classDictionary, ASM_Files)
-#mySet = tools.buildAllSet(ASM_Files)
+#mySet = tools.createEvenTestSet(classDictionary, ASM_Files)
+mySet = tools.buildAllSet(ASM_Files)
 
 #Assemble features in train set
 #==================================
@@ -114,26 +114,30 @@ for crossVal in range(numCrossVals):
     #Run the training/testing
 
     #build CNN
-    print("                         | Training -> CNN")
+    print("                            | Training -> CNN")
     CNN = TFConvNetwork.TFConvNetwork(X_DIMENSION, Y_DIMENSION, 9, cv_data_cnn, cv_labels, test_data_CNN, testLabels)
     CNN_DATA = CNN.trainAndClassify(CNN_ITERATIONS)
-    print("                         | " + str(CNN_DATA[1]))
+    print("                            | " + str(CNN_DATA[1]))
     CNN_accuracy += CNN_DATA[1]
 
     # build FFNN
-    print("        | Training -> FFNN")
+    print("                            | Training -> FFNN")
     FFNN = FeedForwardNeuralNetwork.FFNN(cv_data_nGram, cv_labels, test_data_nGram, testLabels, len(info["featureBatch"]), 9, iterations)
     FFNN_DATA = FFNN.trainAndClassify()
-    print("          | " + str(FFNN_DATA[1]))
+    print("                            | " + str(FFNN_DATA[1]))
     NGRAM_accuracy += FFNN_DATA[1]
 
-    print(str(crossVal).rjust(24) + " | Final Cross Val Result -> ")
-    print("                         | CNN -> " + str(CNN_DATA[1]))
-    print("                         | FFNN -> " + str(FFNN_DATA[1]))
-    combVals = (CNN_DATA[1]*CNN_DATA[0]) + (FFNN_DATA[1]*FFNN_DATA[0])
-    tempCombAcc = np.mean(np.argmax(testLabels, axis=1) == np.mean(np.argmax(combVals, axis=1)))
+    print(str(crossVal).rjust(27) + " | Final Cross Val Result -> ")
+    print("                               | CNN -> " + str(CNN_DATA[1]))
+    print("                               | FFNN -> " + str(FFNN_DATA[1]))
+
+    CNN_NORMAL = tools.miniNormalize(CNN_DATA[0])
+    FFNN_NORMAL = tools.miniNormalize(FFNN_DATA[0])
+
+    combVals = (CNN_DATA[1]*CNN_NORMAL) + (FFNN_DATA[1]*FFNN_NORMAL)
+    tempCombAcc = np.mean(np.argmax(testLabels, axis=1) == np.argmax(combVals, axis=1))
     combAccPercent += tempCombAcc
-    print("                         | Combined -> " + str(combAccPercent))
+    print("                               | Combined -> " + str(tempCombAcc))
 
 
 finalAccuracyCNN = CNN_accuracy/numCrossVals
@@ -146,9 +150,13 @@ finalAccuracyComb = combAccPercent/numCrossVals
 print("Final Cross Val accuracy --> Combined: " + str(finalAccuracyComb))
 
 #!!!!!!!!!!!!!!!!!!!!!!
-#Final Cross Val accuracy --> FFNN: 0.9502680109648564
+#Final Cross Val accuracy --> FFNN: 0.9668438696098651
 #!!!!!!!!!!!!!!!!!!!!!!
 
 #!!!!!!!!!!!!!!!!!!!!!!
-#Final Cross Val accuracy --> CNN: 0.864428036765
+#Final Cross Val accuracy --> CNN: 0.885241235329
+#!!!!!!!!!!!!!!!!!!!!!!
+
+#!!!!!!!!!!!!!!!!!!!!!!
+#Final Cross Val accuracy --> Combined: 0.976514244978
 #!!!!!!!!!!!!!!!!!!!!!!
